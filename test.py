@@ -46,8 +46,11 @@ def prompt_with_examples(prompt, examples=[]):
 
 # pytesseract.pytesseract.tesseract_cmd = r'C:/Program Files/Tesseract-OCR/tesseract.exe'
 
-success = 0
-fail = 0
+cl_success = 0
+cl_fail = 0
+
+pers_success = 0
+pers_fail = 0
 
 
 
@@ -56,7 +59,7 @@ print("Starting Training.")
 file_path = 'data/abortion_train.csv'
 df = pd.read_csv(file_path)
 # examples = [0] * df.shape[0]
-examples = [0] * 11
+examples = []
 
 for index, row in df.iterrows():
     tweet_id = str(row['tweet_id'])
@@ -69,11 +72,10 @@ for index, row in df.iterrows():
     image_text = ""
     if image is None:
         continue
-    else:
-        gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)  # Convert to grayscale
-        _, thresh = cv2.threshold(gray, 150, 255, cv2.THRESH_BINARY)  # Apply binary thresholding
+        # gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)  # Convert to grayscale
+        # _, thresh = cv2.threshold(gray, 150, 255, cv2.THRESH_BINARY)  # Apply binary thresholding
 
-        image_text = pytesseract.image_to_string(thresh)
+        # image_text = pytesseract.image_to_string(thresh)
 
     # print("Tweet Text:")
     # print(tweet_text)
@@ -90,9 +92,9 @@ for index, row in df.iterrows():
 
                         Only answer this question in one word, one of these two options: ["support", "oppose"]. Answer: """
 
-    example = f"{example_prompt}: {stance}"
-    examples[index] = example
-    if index == 10:
+    example = (example_prompt, stance)
+    examples.append(example)
+    if index == 20:
         break
 
 print("Done training. Beginning testing phase.")
@@ -142,11 +144,11 @@ for index, row in df.iterrows():
                         Give your answer to this question using a one word response of one of these three options: ["support", "oppose", "null"]. Answer: """
 
 
-        # response = ollama.chat(model='llama3.2', messages=[{'role': 'user','content': prompt_with_examples(input_string, examples)}])
+        response = ollama.chat(model='llama3.2', messages=[{'role': 'user','content': prompt_with_examples(input_string, examples)}])
 
         response2 = ollama.chat(model='llama3.2-vision', messages=[{'role': 'user','content': prompt_with_examples(input_string_p, examples), 'images': [image_path]}])
 
-        # print(response['message']['content'])
+        print(response['message']['content'])
         print("\n")
         print(response2['message']['content'])
         print(tweet_id)
@@ -154,15 +156,26 @@ for index, row in df.iterrows():
         print("stance: ", stance)
         print("\n")
 
-        # if len(response['message']['content']) > 10:
-        #     continue
-        # if response['message']['content'].lower().find(stance) != -1:
-        #     print("Success")
-        #     success = success + 1
-        # else:
-        #     print("Fail")
-        #     #print(response['message']['content'].lower(), stance)
-        #     fail = fail + 1
+        if response['message']['content'].lower().find(stance) != -1:
+            print("Success")
+            cl_success += 1
 
-        # print("Success Rate:")
-        # print(success / (success + fail))
+            if response2['message']['content'].lower().find(stance) != -1:
+                pers_success += 1
+            else:
+                pers_fail += 1
+
+        else:
+            print("Fail")
+            #print(response['message']['content'].lower(), stance)
+            cl_fail += 1
+
+            pers_fail += 1
+
+        
+
+        print("Classification Success Rate:")
+        print(cl_success / (cl_success + cl_fail))
+
+        print("Persuasiveness Success Rate:")
+        print(pers_success / (pers_success + pers_fail))
