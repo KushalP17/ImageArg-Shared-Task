@@ -187,3 +187,4 @@ for index, row in df.iterrows():
 
         print("Persuasiveness Success Rate:")
         print(pers_success / (pers_success + pers_fail))
+        print("n =", cl_success + cl_fail)
