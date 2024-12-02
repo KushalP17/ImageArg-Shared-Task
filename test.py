@@ -52,6 +52,8 @@ cl_fail = 0
 pers_success = 0
 pers_fail = 0
 
+num_examples = 10
+
 
 
 print("Starting Training.")
@@ -82,19 +84,16 @@ for index, row in df.iterrows():
     # print("Image Text:")
     # print(image_text)
 
-    example_prompt = f"""You are a sentiment analysis bot who take a tweet about Abortion as an input and outputs "support" if the tweet supports Abortion and "oppose" if the tweet opposes Abortion. 
+    example_prompt = f"""You are a sentiment analysis bot who takes a tweet about Abortion as an input and outputs "support" if the tweet supports Abortion and "oppose" if the tweet opposes Abortion. 
                         You are an unbiased third party only classifying these tweets. 
-                        Please be aware of hashtags associated with each side, such as #prolife, #maga, #trump, #republican, #conservative, #christian, etc. that are associated with opposing Abortion, 
-                        and hashtags like #prochoice, #democrat, #womensright, #womenschoice, #women, #liberal, etc. that are associated with supporting Abortion. 
-        
-                        Please be aware of sarcasm embedded in tweets, and the real stance has a higher number of related hashtags. 
+                        Please be aware of sarcasm embedded in tweets, and the sentiment and relation of hashtags. 
                         Here is the tweet: {tweet_text}
 
-                        Only answer this question in one word, one of these two options: ["support", "oppose"]. Answer: """
+                        Only answer this question with one of these two options: ["support", "oppose"]. Answer: """
 
     example = (example_prompt, stance)
     examples.append(example)
-    if index == 20:
+    if index == num_examples:
         break
 
 print("Done training. Beginning testing phase.")
@@ -108,7 +107,7 @@ for index, row in df.iterrows():
     stance = row['stance']
     persuasiveness = row['persuasiveness']
 
-    image_path = 'data/images/test/images/image/' + tweet_id + '.jpg'
+    image_path = './data/images/test/images/image/' + tweet_id + '.jpg'
     image = cv2.imread(image_path)
 
     if image is None:
@@ -137,7 +136,7 @@ for index, row in df.iterrows():
 
                         Only answer this question in one word, one of these two options: ["support", "oppose"]. Answer: """
 
-        input_string_p = f"""You are a sentiment analysis bot that classifies an image based on topic content. If the image is unrelated to abortion, simply respond with "null". If it is related to abortion, classify the content to distinguish whether it supports or opposes Abortion.
+        input_string_p = f"""You are a sentiment analysis bot that classifies an image based on topic content. If the image is unrelated to abortion or no image is given, simply respond with "null". If it is related to abortion, classify the content to distinguish whether it supports or opposes Abortion.
 
                         Please be aware of certain sentiments and slogans such as pro-life, Christian, conservative, republican, etc. which opposes abortion and pro-choice, liberal, democrat, women's choice, etc. which supports abortion. 
 
@@ -146,30 +145,39 @@ for index, row in df.iterrows():
 
         response = ollama.chat(model='llama3.2', messages=[{'role': 'user','content': prompt_with_examples(input_string, examples)}])
 
-        response2 = ollama.chat(model='llama3.2-vision', messages=[{'role': 'user','content': prompt_with_examples(input_string_p, examples), 'images': [image_path]}])
+        response2 = ollama.chat(model='llama3.2-vision', messages=[{'role': 'user','content': input_string_p, 'images': [image_path]}])
 
-        print(response['message']['content'])
+        
         print("\n")
+        print(response['message']['content'])
         print(response2['message']['content'])
         print(tweet_id)
         print("persuasiveness: ", persuasiveness)
         print("stance: ", stance)
         print("\n")
 
+        cl_match_stance = False
+
         if response['message']['content'].lower().find(stance) != -1:
             print("Success")
             cl_success += 1
-
-            if response2['message']['content'].lower().find(stance) != -1:
-                pers_success += 1
-            else:
-                pers_fail += 1
+            cl_match_stance = True
 
         else:
             print("Fail")
             #print(response['message']['content'].lower(), stance)
             cl_fail += 1
+            cl_match_stance = False
 
+
+        if response2['message']['content'].lower().find(stance) != -1 and cl_match_stance:
+            output_pers = "yes"
+        else:
+            output_pers = "no"
+
+        if output_pers == persuasiveness:
+            pers_success += 1
+        else:
             pers_fail += 1
 
         
