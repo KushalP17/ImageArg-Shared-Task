@@ -188,3 +188,17 @@ for index, row in df.iterrows():
         print("Persuasiveness Success Rate:")
         print(pers_success / (pers_success + pers_fail))
         print("n =", cl_success + cl_fail)
+
+        n = cl_success + cl_fail
+        success_rate = cl_success / n
+        
+
+        # if n >= 30 and success_rate > best_stat_n_30:
+        #     best_stat_n_30 = success_rate
+        #     print("Classification Success Rate:")
+        #     print(best_stat_n_30)
+        #     print("n =", n)
+        # elif n >= 30 and success_rate >= .87:
+        #     print("Rate:", success_rate, "n =", n)
+        # else:
+        #     print("n =", n)
